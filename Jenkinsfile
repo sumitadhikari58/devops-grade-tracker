@@ -14,20 +14,25 @@ pipeline {
     stage('1 - Git Checkout') {
       steps {
         echo "=============================="
-        echo "Branch: ${env.BRANCH_NAME}"
         echo "Build:  #${env.BUILD_NUMBER}"
         echo "=============================="
         checkout scm
+        script {
+          def detected = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'develop'
+          env.ACTIVE_BRANCH = detected
+            .replaceFirst(/^origin\//, '')
+            .replaceFirst(/^refs\/heads\//, '')
+          echo "Branch: ${env.ACTIVE_BRANCH}"
+        }
       }
     }
 
     stage('2 - Code Lint') {
       steps {
         sh '''
-          pip install flake8 --break-system-packages \
-            2>/dev/null || pip install flake8
+          python -m pip install --user flake8
           echo "Running code quality check..."
-          flake8 app.py --max-line-length=120 \
+          python -m flake8 app.py --max-line-length=120 \
             --exclude=venv,__pycache__ || true
           echo "Lint check complete"
         '''
@@ -37,10 +42,7 @@ pipeline {
     stage('3 - Unit Tests') {
       steps {
         sh '''
-          pip install pytest --break-system-packages \
-            2>/dev/null || pip install pytest
-          pip install flask prometheus-flask-exporter \
-            --break-system-packages 2>/dev/null || true
+          python -m pip install --user -r requirements.txt
           echo "Running unit tests..."
           python -m pytest tests/ -v --tb=short
           echo "All tests passed"
@@ -64,7 +66,7 @@ pipeline {
 
     stage('5 - Deploy to Development') {
       when {
-        branch 'develop'
+        expression { env.ACTIVE_BRANCH == 'develop' }
       }
       steps {
         sh """
@@ -85,7 +87,7 @@ pipeline {
 
     stage('5 - Deploy to Production') {
       when {
-        branch 'main'
+        expression { env.ACTIVE_BRANCH == 'main' }
       }
       steps {
         sh """
@@ -111,7 +113,7 @@ pipeline {
           sleep 8
         '''
         script {
-          def port = (env.BRANCH_NAME == 'main')
+          def port = (env.ACTIVE_BRANCH == 'main')
                       ? env.PROD_PORT
                       : env.DEV_PORT
           sh """
@@ -129,17 +131,17 @@ pipeline {
   post {
     success {
       script {
-        def port = (env.BRANCH_NAME == 'main')
+        def port = (env.ACTIVE_BRANCH == 'main')
                     ? env.PROD_PORT
                     : env.DEV_PORT
-        def env_name = (env.BRANCH_NAME == 'main')
+        def env_name = (env.ACTIVE_BRANCH == 'main')
                         ? 'PRODUCTION'
                         : 'DEVELOPMENT'
         echo """
         ==============================
         DEPLOYMENT SUCCESSFUL
         Environment : ${env_name}
-        Branch      : ${env.BRANCH_NAME}
+        Branch      : ${env.ACTIVE_BRANCH}
         Build       : #${env.BUILD_NUMBER}
         Port        : ${port}
         ==============================
@@ -150,7 +152,7 @@ pipeline {
       echo """
       ==============================
       DEPLOYMENT FAILED
-      Branch : ${env.BRANCH_NAME}
+      Branch : ${env.ACTIVE_BRANCH}
       Build  : #${env.BUILD_NUMBER}
       Check the stage logs above.
       ==============================
