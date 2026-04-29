@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevOps Grade Tracker</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #F4F6F9;
+      color: #111827;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: #0C447C;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      z-index: 100;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+    }
+
+    .topbar-left,
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .topbar-brand {
+      color: #E6F1FB;
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .topbar-sub {
+      color: #B5D4F4;
+      font-size: 12px;
+      border-left: 1px solid rgba(255,255,255,0.2);
+      padding-left: 14px;
+      white-space: nowrap;
+    }
+
+    .pipeline-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #5DCAA5;
+      box-shadow: 0 0 0 4px rgba(93, 202, 165, 0.14);
+    }
+
+    .pipeline-label {
+      color: #D9EBFB;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .env-pill {
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      background: #1D9E75;
+      color: #E1F5EE;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: flex;
+      margin-top: 56px;
+    }
+
+    .sidebar {
+      width: 240px;
+      position: fixed;
+      top: 56px;
+      bottom: 0;
+      left: 0;
+      background: white;
+      border-right: 1px solid #e5e7eb;
+      padding: 16px 0;
+      overflow-y: auto;
+    }
+
+    .side-section {
+      padding: 0 14px 14px;
+    }
+
+    .sidebar-label {
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 10px 10px 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      font-size: 13px;
+      font-family: inherit;
+      color: #6b7280;
+      margin-bottom: 2px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .nav-item:hover {
+      background: #f3f4f6;
+    }
+
+    .nav-item:focus-visible {
+      outline: 2px solid #378ADD;
+      outline-offset: 2px;
+    }
+
+    .nav-item.active {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 500;
+    }
+
+    .nav-icon {
+      width: 18px;
+      text-align: center;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 20px;
+      padding: 1px 8px;
+      font-size: 11px;
+    }
+
+    .content {
+      margin-left: 240px;
+      padding: 24px;
+      width: calc(100% - 240px);
+    }
+
+    .scroll-target {
+      scroll-margin-top: 78px;
+    }
+
+    .nav-feedback {
+      display: none;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #1e40af;
+      font-size: 13px;
+    }
+
+    .nav-feedback.show {
+      display: block;
+    }
+
+    .target-pulse {
+      animation: targetPulse 900ms ease;
+    }
+
+    .view-hidden {
+      display: none !important;
+    }
+
+    @keyframes targetPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(55, 138, 221, 0.25);
+      }
+      100% {
+        box-shadow: 0 0 0 8px rgba(55, 138, 221, 0);
+      }
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      margin-bottom: 18px;
+    }
+
+    .page-title {
+      margin: 0 0 4px;
+      font-size: 24px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .page-subtitle {
+      margin: 0;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .search-box {
+      max-width: 280px;
+      min-width: 220px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      min-height: 104px;
+    }
+
+    .stat-label {
+      color: #64748b;
+      font-size: 12px;
+      margin-bottom: 9px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 500;
+      color: #0f172a;
+      overflow-wrap: anywhere;
+    }
+
+    .stat-icon {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: #EFF6FF;
+      color: #185FA5;
+      font-size: 17px;
+      flex: 0 0 auto;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field label {
+      display: block;
+      color: #475569;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      height: 36px;
+      font-size: 13px;
+      background: white;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #378ADD;
+      box-shadow: 0 0 0 3px rgba(55,138,221,0.1);
+    }
+
+    .submit-btn {
+      margin-top: 14px;
+      background: #185FA5;
+      color: white;
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 0;
+      font-weight: 650;
+      height: 40px;
+    }
+
+    .submit-btn:hover {
+      background: #0C447C;
+    }
+
+    .error-msg {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    .success-msg {
+      background: #dcfce7;
+      color: #166534;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    .insights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      min-height: 112px;
+      padding-top: 14px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .chart-col {
+      width: 18%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .chart-bar {
+      width: 28px;
+      min-height: 4px;
+      max-height: 70px;
+      border-radius: 7px 7px 0 0;
+      background: #378ADD;
+      transition: height 180ms ease;
+    }
+
+    .build-list {
+      display: grid;
+      gap: 8px;
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .build-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 7px;
+    }
+
+    .build-pass {
+      color: #16a34a;
+      font-weight: 650;
+    }
+
+    .table-card {
+      padding: 0;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .table-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      gap: 14px;
+    }
+
+    .table-head h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: 650;
+      text-align: left;
+      padding: 11px 16px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #dbeafe;
+      color: #1e40af;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .rank-badge {
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: #eef2f7;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .rank-1 {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .rank-2 {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .rank-3 {
+      background: #fce7e7;
+      color: #9f1239;
+    }
+
+    .score-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 140px;
+    }
+
+    .score-bar {
+      height: 5px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      background: #378ADD;
+      border-radius: 3px;
+    }
+
+    .grade-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .grade-A {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .grade-B {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .grade-C {
+      background: #fef9c3;
+      color: #854d0e;
+    }
+
+    .grade-D {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
+    .grade-F {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .del-btn {
+      background: none;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      line-height: 1;
+    }
+
+    .del-btn:hover {
+      background: #fff1f2;
+    }
+
+    .empty-state {
+      padding: 34px 20px;
+      color: #64748b;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .pipeline {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .pipe-stage {
+      flex: 1;
+      text-align: center;
+      padding: 10px 4px;
+      border-top: 3px solid #5DCAA5;
+      min-width: 0;
+    }
+
+    .pipe-number {
+      color: #64748b;
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
+    .pipe-name {
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .pipe-status {
+      font-size: 10px;
+      color: #16a34a;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 1100px) {
+      .stats-grid,
+      .two-col {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .pipeline {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 780px) {
+      .topbar {
+        padding: 0 16px;
+      }
+
+      .topbar-sub,
+      .pipeline-label {
+        display: none;
+      }
+
+      .layout {
+        display: block;
+      }
+
+      .sidebar {
+        display: block;
+        position: static;
+        width: 100%;
+        border-right: 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .content {
+        margin-left: 0;
+        width: 100%;
+        padding: 18px;
+      }
+
+      .page-head,
+      .table-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .stats-grid,
+      .two-col,
+      .form-grid,
+      .insights-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .search-box {
+        max-width: none;
+        min-width: 0;
+      }
+
+      .table-card {
+        overflow-x: auto;
+      }
+
+      table {
+        min-width: 760px;
+      }
+
+      .pipeline {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-brand">🎓 DevOps Grade Tracker</div>
+      <div class="topbar-sub">Pre-Final Year</div>
+    </div>
+    <div class="topbar-right">
+      <span class="pipeline-dot"></span>
+      <span class="pipeline-label">Pipeline Active</span>
+      <span class="env-pill">{{ env }}</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="side-section">
+        <div class="sidebar-label">Main</div>
+        <button type="button" class="nav-item active" data-view="dashboard" data-title="Student Performance Dashboard" data-subtitle="Track grades, deployment health, and CI/CD status from one production-ready Flask service." data-message="Dashboard summary selected.">
+          <span class="nav-icon">▣</span>Dashboard<span class="nav-badge">Live</span>
+        </button>
+        <button type="button" class="nav-item" data-view="students" data-title="Student Records" data-subtitle="View, search, rank, and delete student grade records." data-message="Student records table selected.">
+          <span class="nav-icon">◉</span>Students
+        </button>
+        <button type="button" class="nav-item" data-view="analytics" data-title="Grade Analytics" data-subtitle="Review score distribution, grade counts, averages, and pass rate." data-message="Grade distribution analytics selected.">
+          <span class="nav-icon">▤</span>Analytics
+        </button>
+      </div>
+      <div class="side-section">
+        <div class="sidebar-label">DevOps</div>
+        <button type="button" class="nav-item" data-view="pipeline" data-title="Jenkins Pipeline" data-subtitle="Follow the automated CI/CD stages from checkout to health check." data-message="Jenkins CI/CD pipeline status selected.">
+          <span class="nav-icon">↻</span>Pipeline
+        </button>
+        <button type="button" class="nav-item" data-view="docker" data-title="Docker Runtime" data-subtitle="Container image, exposed ports, compose services, and deployment commands." data-message="Docker deployment details selected.">
+          <span class="nav-icon">⬡</span>Docker
+        </button>
+        <button type="button" class="nav-item" data-view="monitor" data-title="Application Monitor" data-subtitle="Health endpoint, environment, status, and active in-memory records." data-message="Application health check stage selected.">
+          <span class="nav-icon">✓</span>Monitor
+        </button>
+      </div>
+      <div class="side-section">
+        <div class="sidebar-label">Envs</div>
+        <button type="button" class="nav-item" data-view="dev" data-title="Development Environment" data-subtitle="Local development container running Flask on port 5050." data-message="Development environment uses port 5050.">
+          <span class="nav-icon">🟡</span>Dev
+        </button>
+        <button type="button" class="nav-item" data-view="prod" data-title="Production Environment" data-subtitle="Production deployment maps public port 80 to the Gunicorn container." data-message="Production environment maps port 80 to the same containerized app.">
+          <span class="nav-icon">🟢</span>Prod
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="page-head scroll-target" id="dashboard">
+        <div>
+          <h1 class="page-title" id="pageTitle">Student Performance Dashboard</h1>
+          <p class="page-subtitle" id="pageSubtitle">Track grades, deployment health, and CI/CD status from one production-ready Flask service.</p>
+        </div>
+        <input class="search-box" id="searchInput" type="search" placeholder="Search by name or subject" oninput="filterTable()">
+      </section>
+      <div class="nav-feedback" id="navFeedback" aria-live="polite"></div>
+
+      <section class="stats-grid scroll-target view-panel" data-views="dashboard analytics monitor dev prod" id="environment">
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Total Students</div>
+            <div class="stat-value">{{ stats.total }}</div>
+          </div>
+          <div class="stat-icon">👥</div>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Class Average</div>
+            <div class="stat-value">{{ stats.average }}%</div>
+          </div>
+          <div class="stat-icon">∑</div>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Highest Score</div>
+            <div class="stat-value">{{ stats.highest }} ({{ stats.highest_name }})</div>
+          </div>
+          <div class="stat-icon">★</div>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Pass Rate</div>
+            <div class="stat-value">{{ stats.pass_rate }}%</div>
+          </div>
+          <div class="stat-icon">✓</div>
+        </div>
+      </section>
+
+      <section class="two-col view-panel" data-views="dashboard">
+        <div class="card scroll-target" id="add-record">
+          <h2>Add Student Record</h2>
+          <form method="POST" action="/add">
+            <div class="form-grid">
+              <div class="field">
+                <label for="name">Name</label>
+                <input id="name" name="name" type="text" required>
+              </div>
+              <div class="field">
+                <label for="roll">Roll</label>
+                <input id="roll" name="roll" type="text" required>
+              </div>
+              <div class="field">
+                <label for="subject">Subject</label>
+                <select id="subject" name="subject" required>
+                  <option value="">Select subject</option>
+                  <option>Cloud Computing</option>
+                  <option>DevOps</option>
+                  <option>Operating Systems</option>
+                  <option>Computer Networks</option>
+                  <option>Database Systems</option>
+                  <option>Software Engineering</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="score">Score</label>
+                <input id="score" name="score" type="number" min="0" max="100" required>
+              </div>
+            </div>
+            <button class="submit-btn" type="submit">Add Record</button>
+          </form>
+
+          {% if request.args.get('error') %}
+            <div class="error-msg">{{ request.args.get('error') }}</div>
+          {% endif %}
+
+          {% if request.args.get('success') %}
+            <div class="success-msg" id="successMsg">
+              {{ request.args.get('success') }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="card scroll-target">
+          <h2>Score Distribution</h2>
+          <div id="gradeData" style="display:none">
+            {{ stats.grade_counts | tojson }}
+          </div>
+          <div class="insights-grid">
+            <div class="chart" aria-label="Grade distribution chart">
+              <div class="chart-col"><span id="cnt-A">0</span><div class="chart-bar" id="bar-A"></div><strong>A</strong></div>
+              <div class="chart-col"><span id="cnt-B">0</span><div class="chart-bar" id="bar-B"></div><strong>B</strong></div>
+              <div class="chart-col"><span id="cnt-C">0</span><div class="chart-bar" id="bar-C"></div><strong>C</strong></div>
+              <div class="chart-col"><span id="cnt-D">0</span><div class="chart-bar" id="bar-D"></div><strong>D</strong></div>
+              <div class="chart-col"><span id="cnt-F">0</span><div class="chart-bar" id="bar-F"></div><strong>F</strong></div>
+            </div>
+            <div class="build-list scroll-target" id="docker-info">
+              <div class="build-row"><span>Branch Strategy</span><strong>develop → main</strong></div>
+              <div class="build-row"><span>Container Runtime</span><strong>Docker</strong></div>
+              <div class="build-row"><span>Webhook Trigger</span><strong>GitHub</strong></div>
+              <div class="build-row"><span>Latest Build</span><strong class="build-pass">Passed</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card scroll-target view-panel view-hidden" data-views="analytics" id="analytics">
+        <h2>Grade Analytics Detail</h2>
+        <div class="build-list">
+          <div class="build-row"><span>A Grade</span><strong>{{ stats.grade_counts.A }} students</strong></div>
+          <div class="build-row"><span>B Grade</span><strong>{{ stats.grade_counts.B }} students</strong></div>
+          <div class="build-row"><span>C Grade</span><strong>{{ stats.grade_counts.C }} students</strong></div>
+          <div class="build-row"><span>D Grade</span><strong>{{ stats.grade_counts.D }} students</strong></div>
+          <div class="build-row"><span>F Grade</span><strong>{{ stats.grade_counts.F }} students</strong></div>
+        </div>
+      </section>
+
+      <section class="card scroll-target view-panel view-hidden" data-views="docker" id="docker-info">
+        <h2>Docker Deployment</h2>
+        <div class="build-list">
+          <div class="build-row"><span>Image</span><strong>grade-tracker:latest</strong></div>
+          <div class="build-row"><span>Dev Port</span><strong>5050:5050</strong></div>
+          <div class="build-row"><span>Prod Port</span><strong>80:5050</strong></div>
+          <div class="build-row"><span>Runtime</span><strong>Gunicorn on Python 3.11</strong></div>
+          <div class="build-row"><span>Healthcheck</span><strong>/health</strong></div>
+        </div>
+      </section>
+
+      <section class="card scroll-target view-panel view-hidden" data-views="monitor" id="monitor">
+        <h2>Health Monitor</h2>
+        <div class="build-list">
+          <div class="build-row"><span>Endpoint</span><strong>/health</strong></div>
+          <div class="build-row"><span>Status</span><strong class="build-pass">ok</strong></div>
+          <div class="build-row"><span>Environment</span><strong>{{ env }}</strong></div>
+          <div class="build-row"><span>Active Records</span><strong>{{ stats.total }}</strong></div>
+        </div>
+      </section>
+
+      <section class="card scroll-target view-panel view-hidden" data-views="dev prod" id="environment-detail">
+        <h2>Environment Deployment</h2>
+        <div class="build-list">
+          <div class="build-row"><span>Development URL</span><strong>http://localhost:5050</strong></div>
+          <div class="build-row"><span>Production URL</span><strong>http://EC2_PUBLIC_IP</strong></div>
+          <div class="build-row"><span>Deployment Script</span><strong>scripts/deploy.sh [dev|prod]</strong></div>
+          <div class="build-row"><span>Cloud Target</span><strong>AWS EC2 Ubuntu 22.04</strong></div>
+        </div>
+      </section>
+
+      <section class="card table-card scroll-target view-panel" data-views="dashboard students" id="students">
+        <div class="table-head">
+          <h2>Student Records</h2>
+          <span class="page-subtitle">{{ stats.total }} active records</span>
+        </div>
+        {% if students %}
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Avatar</th>
+                <th>Name</th>
+                <th>Roll</th>
+                <th>Subject</th>
+                <th>Score bar</th>
+                <th>Grade pill</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+            <tbody id="studentTable">
+              {% for student in students %}
+              <tr data-name="{{ student.name|lower }}" data-subject="{{ student.subject|lower }}">
+                <td>
+                  <span class="rank-badge {% if loop.index==1 %}rank-1{% elif loop.index==2 %}rank-2{% elif loop.index==3 %}rank-3{% endif %}">
+                    {{ loop.index }}
+                  </span>
+                </td>
+                <td><div class="avatar">{{ student.name[:2]|upper }}</div></td>
+                <td>{{ student.name }}</td>
+                <td>{{ student.roll }}</td>
+                <td>{{ student.subject }}</td>
+                <td>
+                  <div class="score-wrap">
+                    <div class="score-bar">
+                      <div class="score-fill" style="width:{{ student.score }}%"></div>
+                    </div>
+                    <span>{{ student.score }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="grade-pill grade-{{ student.grade }}">
+                    {{ student.grade }}
+                  </span>
+                </td>
+                <td>
+                  <form method="POST" action="/delete/{{ student.id }}" style="display:inline">
+                    <button type="submit" class="del-btn">✕</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+
+        {% if not students %}
+          <div class="empty-state">
+            No records yet. Add a student above.
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="card scroll-target view-panel" data-views="dashboard pipeline" id="pipeline">
+        <h2>CI/CD Pipeline Status</h2>
+        <div class="pipeline">
+          <div class="pipe-stage"><div class="pipe-number">01</div><div class="pipe-name">Git Checkout</div><div class="pipe-status">Passed</div></div>
+          <div class="pipe-stage"><div class="pipe-number">02</div><div class="pipe-name">Code Lint</div><div class="pipe-status">Passed</div></div>
+          <div class="pipe-stage"><div class="pipe-number">03</div><div class="pipe-name">Unit Tests</div><div class="pipe-status">Passed</div></div>
+          <div class="pipe-stage"><div class="pipe-number">04</div><div class="pipe-name">Docker Build</div><div class="pipe-status">Passed</div></div>
+          <div class="pipe-stage"><div class="pipe-number">05</div><div class="pipe-name">Security Scan</div><div class="pipe-status">Passed</div></div>
+          <div class="pipe-stage"><div class="pipe-number">06</div><div class="pipe-name">Push Image</div><div class="pipe-status">Passed</div></div>
+          <div class="pipe-stage"><div class="pipe-number">07</div><div class="pipe-name">Deploy</div><div class="pipe-status">Passed</div></div>
+          <div class="pipe-stage"><div class="pipe-number">08</div><div class="pipe-name">Health Check</div><div class="pipe-status">Passed</div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    var grades = JSON.parse(
+      document.getElementById('gradeData').textContent
+    );
+    var max = Math.max.apply(null, Object.values(grades).concat([1]));
+    ['A','B','C','D','F'].forEach(function(g){
+      var count = grades[g] || 0;
+      var h = Math.max(4, Math.round((count/max)*62));
+      document.getElementById('bar-'+g).style.height = h+'px';
+      document.getElementById('cnt-'+g).textContent = count;
+    });
+
+    {% if request.args.get('success') %}
+    setTimeout(function(){
+      var el = document.getElementById('successMsg');
+      if(el) el.style.display = 'none';
+    }, 3000);
+    {% endif %}
+
+    function filterTable(){
+      var q = document.getElementById('searchInput')
+                      .value.toLowerCase();
+      document.querySelectorAll('#studentTable tr')
+        .forEach(function(row){
+          var name = row.getAttribute('data-name') || '';
+          var subj = row.getAttribute('data-subject') || '';
+          row.style.display =
+            (name.includes(q)||subj.includes(q)) ? '' : 'none';
+        });
+    }
+
+    function showView(view){
+      document.querySelectorAll('.view-panel').forEach(function(panel){
+        var views = (panel.getAttribute('data-views') || '').split(' ');
+        panel.classList.toggle('view-hidden', views.indexOf(view) === -1);
+      });
+    }
+
+    showView('dashboard');
+
+    document.querySelectorAll('.nav-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        var view = item.getAttribute('data-view') || 'dashboard';
+        var target = document.querySelector('.view-panel:not(.view-hidden)') || document.getElementById('dashboard');
+        var feedback = document.getElementById('navFeedback');
+        var pageTitle = document.getElementById('pageTitle');
+        var pageSubtitle = document.getElementById('pageSubtitle');
+
+        document.querySelectorAll('.nav-item').forEach(function(nav){
+          nav.classList.remove('active');
+        });
+        item.classList.add('active');
+        showView(view);
+
+        if (pageTitle) {
+          pageTitle.textContent = item.getAttribute('data-title') || 'DevOps Grade Tracker';
+        }
+
+        if (pageSubtitle) {
+          pageSubtitle.textContent = item.getAttribute('data-subtitle') || '';
+        }
+
+        if (feedback) {
+          feedback.textContent = item.getAttribute('data-message') || '';
+          feedback.classList.add('show');
+        }
+
+        target = document.querySelector('.view-panel:not(.view-hidden)') || document.getElementById('dashboard');
+        if (target) {
+          target.scrollIntoView({ behavior: 'auto', block: 'start' });
+          target.classList.remove('target-pulse');
+          window.setTimeout(function(){
+            target.classList.add('target-pulse');
+          }, 80);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

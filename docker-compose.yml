@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  app-dev:
+    build: .
+    container_name: grade-tracker-dev
+    ports: ["5050:5050"]
+    environment:
+      - APP_ENV=Development
+    restart: unless-stopped
+
+  app-prod:
+    build: .
+    container_name: grade-tracker-prod
+    ports: ["80:5050"]
+    environment:
+      - APP_ENV=Production
+    restart: unless-stopped
+    profiles: ["prod"]
