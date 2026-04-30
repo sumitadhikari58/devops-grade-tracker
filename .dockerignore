@@ -1,0 +1,11 @@
+.git
+.gitignore
+.pytest_cache
+.venv
+__pycache__
+tests/__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.log
+Jenkinsfile 2
