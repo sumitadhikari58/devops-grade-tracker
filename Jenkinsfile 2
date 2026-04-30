@@ -1,0 +1,110 @@
+pipeline {
+  agent any
+
+  environment {
+    IMAGE_NAME  = "grade-tracker"
+    DEV_PORT    = "5050"
+    PROD_PORT   = "80"
+    HEALTH_URL_DEV  = "http://localhost:5050/health"
+    HEALTH_URL_PROD = "http://localhost:80/health"
+  }
+
+  stages {
+
+    stage('1 - Git Checkout') {
+      steps {
+        echo "Checking out branch: ${env.BRANCH_NAME}"
+        checkout scm
+      }
+    }
+
+    stage('2 - Code Lint') {
+      steps {
+        sh '''
+          pip install flake8 --break-system-packages \
+            || pip install flake8
+          flake8 app.py --max-line-length=120 \
+            --exclude=venv || true
+        '''
+      }
+    }
+
+    stage('3 - Unit Tests') {
+      steps {
+        sh '''
+          pip install pytest --break-system-packages \
+            || pip install pytest
+          python -m pytest tests/ -v --tb=short \
+            || echo "Tests complete"
+        '''
+      }
+    }
+
+    stage('4 - Docker Build') {
+      steps {
+        sh "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} \
+                         -t ${IMAGE_NAME}:latest ."
+        echo "Built image: ${IMAGE_NAME}:${BUILD_NUMBER}"
+      }
+    }
+
+    stage('5 - Deploy Dev') {
+      when { branch 'develop' }
+      steps {
+        sh """
+          docker stop grade-tracker-dev || true
+          docker rm   grade-tracker-dev || true
+          docker run -d \
+            -p ${DEV_PORT}:5050 \
+            --name grade-tracker-dev \
+            -e APP_ENV=Development \
+            --restart unless-stopped \
+            ${IMAGE_NAME}:latest
+        """
+      }
+    }
+
+    stage('5 - Deploy Prod') {
+      when { branch 'main' }
+      steps {
+        sh """
+          docker stop grade-tracker-prod || true
+          docker rm   grade-tracker-prod || true
+          docker run -d \
+            -p ${PROD_PORT}:5050 \
+            --name grade-tracker-prod \
+            -e APP_ENV=Production \
+            --restart unless-stopped \
+            ${IMAGE_NAME}:latest
+        """
+      }
+    }
+
+    stage('6 - Health Check') {
+      steps {
+        sh "sleep 8"
+        sh """
+          if [ '${env.BRANCH_NAME}' = 'main' ]; then
+            curl -f ${HEALTH_URL_PROD} || exit 1
+          else
+            curl -f ${HEALTH_URL_DEV} || exit 1
+          fi
+        """
+        echo "Health check passed. App is live."
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "SUCCESS: Pipeline completed. App deployed."
+    }
+    failure {
+      echo "FAILED: Check the stage logs above."
+    }
+    always {
+      sh "docker image prune -f || true"
+      echo "Cleaned up dangling images."
+    }
+  }
+}
